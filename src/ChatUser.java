@@ -6,16 +6,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ChatUser {
-    private static String name;
-    public static String getName() { return name; }
-
     public static void main(String[] args) throws IOException, InterruptedException {
         // Creating temporary username for welcome message
-        name = "Anonymous User #" + (ChatRoom.getActiveUsers() + 1);
+        String name = "Anonymous User";
 
         Socket socket = connectToServer();
+
+        // Starting threads
+        Thread writerThread = new SocketWriter(socket, name, new Scanner(System.in));
         Thread readerThread = new SocketReader(socket);
+
+        writerThread.start();
         readerThread.start();
+        writerThread.join();
         readerThread.join();
     }
 

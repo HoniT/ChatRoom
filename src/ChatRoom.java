@@ -1,35 +1,72 @@
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 public class ChatRoom {
     private static final String SERVER_NAME = "CHATROOM_SERVER";
     private static final String WELCOME_MESSAGE = "Welcome to the chatroom!";
 
+    // List to keep all outputs
+    private static final List<ObjectOutputStream> clientOutputStreams = Collections.synchronizedList(new ArrayList<>());
 
     private static int activeUsers = 0;
-    public static int getActiveUsers() { return activeUsers; }
-
     public static void main(String[] args) throws InterruptedException {
         ServerSocket serverSocket = startServer();
         System.out.println("Info: Chatroom server started.");
 
+        // We will accept users endlessly, so we'll start a thread
         Thread acceptUserThread = new Thread(() -> {
            while(true) acceptUser(serverSocket);
         });
-
         acceptUserThread.start();
 
         acceptUserThread.join();
+    }
+
+    public static synchronized void broadcastMessage(Message message, ObjectOutputStream userOutput) {
+        List<ObjectOutputStream> disconnectedClients = new ArrayList<>();
+
+        for (ObjectOutputStream clientOutput : clientOutputStreams) {
+            if(clientOutput == userOutput) continue;
+            try {
+                Message.sendMessage(clientOutput, message);
+            } catch (Exception e) {
+                // Mark for removal if client disconnected
+                disconnectedClients.add(clientOutput);
+            }
+        }
+
+        // Remove disconnected clients
+        clientOutputStreams.removeAll(disconnectedClients);
+        activeUsers = clientOutputStreams.size();
     }
 
     /// Accepts a user into the chatroom
     private static void acceptUser(ServerSocket serverSocket) {
         try {
             Socket socket = serverSocket.accept();
-            Message.sendMessage(new DataOutputStream(socket.getOutputStream()), WELCOME_MESSAGE, SERVER_NAME);
+            ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+
+            // Add client to the list
+            synchronized (clientOutputStreams) {
+                clientOutputStreams.add(output);
+                activeUsers++;
+            }
+
+            String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+            Message.sendMessage(output, new Message(SERVER_NAME, time, WELCOME_MESSAGE, null));
+
+            // Only start a reader thread - server just receives and broadcasts
+            Thread readerThread = new SocketReader(socket, true, output);
+            readerThread.start();
+
         } catch (IOException e) {
             System.out.println("IOException in server while accepting user!");
         }
