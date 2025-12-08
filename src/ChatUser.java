@@ -1,14 +1,18 @@
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ChatUser {
+    public static String name;
+
     public static void main(String[] args) throws IOException, InterruptedException {
         // Creating temporary username for welcome message
-        String name = "Anonymous User";
+        name = "Anonymous User " + new Random().nextInt(0, 1000);
 
         Socket socket = connectToServer();
 
@@ -57,7 +61,7 @@ public class ChatUser {
             try {
                 socket = new Socket(ip, port);
                 if(socket.isConnected()) {
-                    System.out.println("Connected to chatroom!");
+                    System.out.println("Connected to chatroom as " + name);
                     break;
                 }
             } catch (IOException e) {
@@ -66,5 +70,14 @@ public class ChatUser {
         }
 
         return socket;
+    }
+
+    public static void TryReconnect(Socket socket) {
+        System.out.println("Trying to reconnect");
+        try {
+            socket = new Socket(ChatRoom.getIp(), ChatRoom.getPort());
+        } catch (IOException e) {
+            System.out.println("Couldn't reconnect!");
+        }
     }
 }

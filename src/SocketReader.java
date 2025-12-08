@@ -4,18 +4,21 @@ import java.io.ObjectInputStream;
 import java.net.Socket;
 
 public class SocketReader extends Thread {
+    private final Socket socket;
     private final ObjectInputStream input;
     private final boolean isServer;
 
     private final ObjectOutputStream userOutput; // User output that sends data
 
     public SocketReader(Socket socket) throws IOException {
+        this.socket = socket;
         this.input = new ObjectInputStream(socket.getInputStream());
         this.isServer = false;
         this.userOutput = null;
     }
 
     public SocketReader(Socket socket, boolean isServer, ObjectOutputStream userOutput) throws IOException {
+        this.socket = socket;
         this.input = new ObjectInputStream(socket.getInputStream());
         this.isServer = isServer;
         this.userOutput = userOutput;
@@ -35,6 +38,9 @@ public class SocketReader extends Thread {
                 }
             } catch (IOException e) {
                 System.out.println("Connection lost!");
+                // Trying to reconnect
+                ChatUser.TryReconnect(socket);
+
                 break;
             }
         }

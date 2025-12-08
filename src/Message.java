@@ -1,15 +1,13 @@
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 public class Message {
-    public static void receiveMessage(ObjectInputStream input) {
-        try {
-            String message = input.readUTF();
-            System.out.println(message);
-        } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
-        }
+    public static void receiveMessage(ObjectInputStream input) throws IOException {
+        String message = input.readUTF();
+        System.out.println(message);
     }
 
     public static void sendMessage(ObjectOutputStream output, Message message) {
@@ -25,20 +23,16 @@ public class Message {
     private final String messageTime;
     private final String payload;
 
-    private final ObjectOutputStream outputStream;
-
     public Message(String username, String messageTime, String payload) {
         this.payload = payload;
         this.messageTime = messageTime;
         this.username = username;
-        this.outputStream = null;
     }
 
-    public Message(String username, String messageTime, String payload, ObjectOutputStream outputStream) {
+    public Message(String username, String payload) {
         this.payload = payload;
-        this.messageTime = messageTime;
+        this.messageTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
         this.username = username;
-        this.outputStream = outputStream;
     }
 
     /// Converts a whole unified text into a message object
@@ -56,16 +50,14 @@ public class Message {
                 this.username = usernamePart;
                 this.messageTime = time;
                 this.payload = payload;
-                this.outputStream = null;
                 return;
             }
         }
 
         // If it made it to here place filler values
-        this.username = "USER_NOT_FOUND";
+        this.username = "";
         this.messageTime = "";
-        this.payload = "";
-        this.outputStream = null;
+        this.payload = message;
     }
 
     /// Creates a unified message with metadata + payload for server-user communication
