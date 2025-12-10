@@ -12,12 +12,17 @@ import java.util.function.Function;
 
 /// API like structure for server - client communication
 public class Message {
+    private static final String MESSAGE = "message";
+    private static final String JOINING = "joining";
 
-    // Maps actions to specific handlers (allows multiple actions for server <-> client communication
+    // Maps actions to specific handlers (allows multiple actions for server <-> client communication)
     static Map<String, Function<JsonObject, JsonObject>> actionHandlers = new HashMap<>();
     static {
-        actionHandlers.put("getMessage", Message::getMessage);
+        actionHandlers.put(MESSAGE, Message::getMessage);
+        actionHandlers.put(JOINING, Message::getJoinRequest);
     }
+
+    //region Receive/Read
 
     /// Receives general data
     public static JsonObject receiveData(ObjectInputStream inputStream) throws IOException {
@@ -30,11 +35,11 @@ public class Message {
             }
 
             Packet packet = gson.fromJson(json, Packet.class);
-            if (packet == null || packet.data == null || packet.action == null) {
+            if (packet == null || packet.data == null || packet.type == null) {
                 return null;
             }
 
-            Function<JsonObject, JsonObject> handler = actionHandlers.get(packet.action);
+            Function<JsonObject, JsonObject> handler = actionHandlers.get(packet.type);
             if (handler == null) {
                 return null;
             }
@@ -44,20 +49,6 @@ public class Message {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    /// Generic packet sender
-    public static void sendPacket(ObjectOutputStream outputStream, String action, JsonObject data) throws IOException {
-        Gson gson = new Gson();
-
-        Packet packet = new Packet();
-        packet.action = action;
-        packet.data = data;
-
-        String json = gson.toJson(packet);
-
-        outputStream.writeObject(json);
-        outputStream.flush();
     }
 
     /// Receives a general chat message
@@ -78,12 +69,32 @@ public class Message {
         return response;
     }
 
-    /// Turns message JSON into a unified string
-    public static String getUnifiedMessage(JsonObject jsonObject) {
-        String username = jsonObject.has("username") ? jsonObject.get("username").getAsString() : "";
-        String time = jsonObject.has("time") ? jsonObject.get("time").getAsString() : "";
-        String payload = jsonObject.has("payload") ? jsonObject.get("payload").getAsString() : "";
-        return (username + " " + time + "> " + payload);
+    /// Gets username from join request
+    public static JsonObject getJoinRequest(JsonObject jsonObject) {
+        JsonObject response = new JsonObject();
+
+        if (jsonObject == null) return response;
+
+        if (jsonObject.has("username"))
+            response.addProperty("username", jsonObject.get("username").getAsString());
+        return response;
+    }
+
+    //endregion
+    //region Send/Write
+
+    /// Generic packet sender
+    public static void sendPacket(ObjectOutputStream outputStream, String type, JsonObject data) throws IOException {
+        Gson gson = new Gson();
+
+        Packet packet = new Packet();
+        packet.type = type;
+        packet.data = data;
+
+        String json = gson.toJson(packet);
+
+        outputStream.writeObject(json);
+        outputStream.flush();
     }
 
     /// Send a general chat message
@@ -96,7 +107,16 @@ public class Message {
         data.addProperty("time", time);
         data.addProperty("payload", payload);
 
-        sendPacket(outputStream, "getMessage", data);
+        sendPacket(outputStream, MESSAGE, data);
+    }
+
+    /// Sends join request to server through outputStream
+    public static void sendJoinRequest(ObjectOutputStream outputStream, String username) throws IOException {
+        if(username == null) return;
+
+        JsonObject data = new JsonObject();
+        data.addProperty("username", username);
+        sendPacket(outputStream, JOINING, data);
     }
 
     /// Passes data to chatroom for broadcasting
@@ -106,7 +126,6 @@ public class Message {
             System.out.println("Broadcast error: Couldn't receive JSON!");
             return;
         }
-
         if (!jsonObject.has("username") || !jsonObject.has("payload")) {
             System.out.println("Broadcast error: Invalid JSON!");
             return;
@@ -118,9 +137,27 @@ public class Message {
         ChatRoom.broadcastMessage(username, payload, sender);
     }
 
+    //endregion
+    //region Helpers
+
+    /// Turns message JSON into a username
+    public static String getUsername(JsonObject jsonObject) {
+        return jsonObject.has("username") ? jsonObject.get("username").getAsString() : "";
+    }
+
+    /// Turns message JSON into a unified string
+    public static String getUnifiedMessage(JsonObject jsonObject) {
+        String username = jsonObject.has("username") ? jsonObject.get("username").getAsString() : "";
+        String time = jsonObject.has("time") ? jsonObject.get("time").getAsString() : "";
+        String payload = jsonObject.has("payload") ? jsonObject.get("payload").getAsString() : "";
+        return (username + " " + time + "> " + payload);
+    }
+
+    //endregion
+
     /// Class for sending and receiving data though JSON
     static class Packet {
-        String action;
+        String type;
         JsonObject data;
     }
 }

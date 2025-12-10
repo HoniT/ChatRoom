@@ -1,16 +1,14 @@
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 /// Chatroom server
 public class ChatRoom {
-    private static final String SERVER_NAME = "SERVER";
-    private static final String WELCOME_MESSAGE = "Welcome to the chatroom!";
+    private static final String SERVER_NAME = "SERVER MESSAGE";
+    private static final String WELCOME_MESSAGE = "Welcome to the chatroom ";
 
     private static ServerSocket serverSocket;
 
@@ -83,7 +81,10 @@ public class ChatRoom {
             while(true) {
                 try {
                     Socket socket = serverSocket.accept();
-                    // Sending Welcome message and saving output stream for later broadcasting
+                    // Saving username
+                    String username = Message.getUsername(Objects.requireNonNull(Message.receiveData(new ObjectInputStream(socket.getInputStream()))));
+
+                    // Saving output stream for later broadcasting
                     ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
                     ClientConnection connection = new ClientConnection(socket, objectOutputStream);
                     synchronized (clientConnections) {
@@ -91,9 +92,9 @@ public class ChatRoom {
                     }
 
                     // Sending welcome message to new user
-                    Message.sendMessage(objectOutputStream, SERVER_NAME, WELCOME_MESSAGE);
+                    Message.sendMessage(objectOutputStream, SERVER_NAME, WELCOME_MESSAGE + username);
                     // Broadcasting join message to other users
-                    broadcastMessage(SERVER_NAME, "A new user joined!", socket);
+                    broadcastMessage(SERVER_NAME, username + " just joined, say hi!", socket);
 
                     // Only starting reader thread
                     SocketReader reader = new SocketReader(socket, true);

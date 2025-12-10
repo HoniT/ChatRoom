@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Random;
 import java.util.Scanner;
@@ -71,7 +72,9 @@ public class ChatUser {
             // Trying to connect
             try {
                 Socket socket = new Socket(ip, port);
-                if(!socket.isConnected()) continue;
+                if(!socket.isConnected()) throw new IOException();
+                // Sending join info
+                Message.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
 
                 return socket;
             } catch (IOException e) {
