@@ -1,83 +1,82 @@
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Objects;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/// Chatroom user
 public class ChatUser {
-    public static String name;
+    private static String username = "";
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        // Creating temporary username for welcome message
-        name = "Anonymous User " + new Random().nextInt(0, 1000);
+    public static void main(String[] args) throws InterruptedException {
+        // Random username
+        username = "Anonymous User " + new Random().nextInt(0, 1000);
 
+        // Connecting to server
         Socket socket = connectToServer();
 
-        // Starting threads
-        Thread writerThread = new SocketWriter(socket, name, new Scanner(System.in));
-        Thread readerThread = new SocketReader(socket);
+        // Starting I/O threads
+        SocketReader socketReader = new SocketReader(socket);
+        socketReader.start();
+        SocketWriter socketWriter = new SocketWriter(socket, new Scanner(System.in), username);
+        socketWriter.start();
 
-        writerThread.start();
-        readerThread.start();
-        writerThread.join();
-        readerThread.join();
+        socketWriter.join();
+        socketReader.join();
     }
 
-    /// Gets server IP and Port and connects to it
-    private static Socket connectToServer() {
-        Scanner scanner = new Scanner(System.in);
-        Socket socket;
-
+    /// Endlessly waits for a valid IP to be provided via scanner
+    private static String getServerIp(Scanner scanner) {
         while(true) {
-            // Getting IP
             System.out.print("Enter server IP: ");
             String ip = scanner.next();
             String ipRegex = "^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\." +
                     "(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
             Matcher m = Pattern.compile(ipRegex).matcher(ip);
-            if(!Objects.equals(ip, "localhost") && !m.find()) {
+            if (!ip.contentEquals("localhost") && !m.find()) {
                 System.out.println("Invalid IP!");
                 continue;
             }
+            return ip;
+        }
+    }
 
-            // Getting port
-            System.out.print("Enter serve Port: ");
-            int port;
+    /// Endlessly waits for a valid port to be provided via scanner
+    private static int getServerPort(Scanner scanner) {
+        while(true) {
+            System.out.print("Enter a port for the server: ");
             if(!scanner.hasNextInt()) {
-                System.out.println("Invalid port number! Please enter a port within the range 1025-65535");
+                System.out.println("Please provide a port within the range: 1025-65535");
                 scanner.next();
                 continue;
             }
-            port = scanner.nextInt();
+            int port = scanner.nextInt();
             if(port < 1025 || port > 65535) {
-                System.out.println("Invalid port number! Please enter a port within the range 1025-65535");
+                System.out.println("Please provide a port within the range: 1025-65535");
                 continue;
             }
-
-            // Connecting
-            try {
-                socket = new Socket(ip, port);
-                if(socket.isConnected()) {
-                    System.out.println("Connected to chatroom as " + name);
-                    break;
-                }
-            } catch (IOException e) {
-                System.out.println("Couldn't connect to " + ip + ":" + port);
-            }
+            return port;
         }
-
-        return socket;
     }
 
-    public static void TryReconnect(Socket socket) {
-        System.out.println("Trying to reconnect");
-        try {
-            socket = new Socket(ChatRoom.getIp(), ChatRoom.getPort());
-        } catch (IOException e) {
-            System.out.println("Couldn't reconnect!");
+    /// Connects to the chatroom server
+    private static Socket connectToServer() {
+        while(true) {
+            Scanner scanner = new Scanner(System.in);
+            // Getting IP and port
+            String ip = getServerIp(scanner);
+            int port = getServerPort(scanner);
+
+            // Trying to connect
+            try {
+                Socket socket = new Socket(ip, port);
+                if(!socket.isConnected()) continue;
+
+                return socket;
+            } catch (IOException e) {
+                System.out.println("Couldn't connect to server do to IOException: " + e.getMessage());
+            }
         }
     }
 }

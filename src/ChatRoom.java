@@ -7,107 +7,104 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
+/// Chatroom server
 public class ChatRoom {
-    public static final String SERVER_NAME = "CHATROOM_SERVER";
+    private static final String SERVER_NAME = "SERVER";
     private static final String WELCOME_MESSAGE = "Welcome to the chatroom!";
 
-    // List to keep all outputs
-    private static final List<ObjectOutputStream> clientOutputStreams = Collections.synchronizedList(new ArrayList<>());
+    private static ServerSocket serverSocket;
 
-    // Server info
-    private static String ip;
-    public static String getIp() { return ip; }
-    private static int port;
-    public static int getPort() { return port; }
+    private static final List<ClientConnection> clientConnections = Collections.synchronizedList(new ArrayList<>());
+    private static final List<SocketReader> readerThreads = Collections.synchronizedList(new ArrayList<>());
 
     public static void main(String[] args) throws InterruptedException {
-        ServerSocket serverSocket = startServer();
-        ip = serverSocket.getInetAddress().toString();
-        port = serverSocket.getLocalPort();
-        System.out.println("Info: Chatroom server started at " + ip + ":" + port);
+        // Getting port, then starting server
+        int port = getServerPort(new Scanner(System.in));
+        startServer(port);
 
-        // We will accept users endlessly, so we'll start a thread
-        Thread acceptUserThread = new Thread(() -> {
-           while(true) acceptUser(serverSocket);
-        });
-        acceptUserThread.start();
+        // Starting user accept thread
+        Thread userAcceptThread = new Thread(new AcceptUsers());
+        userAcceptThread.start();
 
-        acceptUserThread.join();
+        userAcceptThread.join();
+        for(SocketReader sr : readerThreads) sr.join();
     }
 
     /// Broadcasts message to every user except sender
-    public static synchronized void broadcastMessage(Message message, ObjectOutputStream userOutput) {
-        List<ObjectOutputStream> disconnectedClients = new ArrayList<>();
+    public static synchronized void broadcastMessage(String username, String payload, Socket sender) {
+        List<ClientConnection> disconnectedClients = new ArrayList<>();
 
-        for (ObjectOutputStream clientOutput : clientOutputStreams) {
-            if(clientOutput == userOutput) continue;
+        for (ClientConnection connection : clientConnections) {
             try {
-                Message.sendMessage(clientOutput, message);
-            } catch (Exception e) {
+                if(connection.socket == sender) continue;
+                Message.sendMessage(connection.outputStream, username, payload);
+            } catch (IOException e) {
                 // Mark for removal if client disconnected
-                disconnectedClients.add(clientOutput);
+                disconnectedClients.add(connection);
             }
         }
 
         // Remove disconnected clients
-        clientOutputStreams.removeAll(disconnectedClients);
+        clientConnections.removeAll(disconnectedClients);
     }
 
-    /// Accepts a user into the chatroom
-    private static void acceptUser(ServerSocket serverSocket) {
-        try {
-            Socket socket = serverSocket.accept();
-            ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
-
-            // Add client to the list
-            synchronized (clientOutputStreams) {
-                clientOutputStreams.add(output);
-            }
-
-            Message.sendMessage(output, new Message(SERVER_NAME, WELCOME_MESSAGE));
-
-            // Only start a reader thread - server just receives and broadcasts
-            Thread readerThread = new SocketReader(socket, true, output);
-            readerThread.start();
-
-            // Broadcasting that a new user joined
-            broadcastMessage(new Message(SERVER_NAME, "A new user joined!"), output);
-
-        } catch (IOException e) {
-            System.out.println("IOException in server while accepting user!");
-        }
-
-        System.out.println("Info: User joined the chatroom.");
-    }
-
-    /// Asks for a port and starts the server
-    private static ServerSocket startServer() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("----- Chatroom Server Config -----");
-
-        int port;
-        // Getting valid server port
+    /// Endlessly waits for a valid port to be provided via scanner
+    private static int getServerPort(Scanner scanner) {
         while(true) {
             System.out.print("Enter a port for the server: ");
-
             if(!scanner.hasNextInt()) {
-                System.out.println("Invalid port number! Please enter a port within the range 1025-65535");
-                scanner.next();
+                System.out.println("Please provide a port within the range: 1025-65535");
+                scanner.nextLine();
                 continue;
             }
-            port = scanner.nextInt();
-
+            int port = scanner.nextInt();
             if(port < 1025 || port > 65535) {
-                System.out.println("Invalid port number! Please enter a port within the range 1025-65535");
+                System.out.println("Please provide a port within the range: 1025-65535");
                 continue;
             }
+            return port;
+        }
+    }
 
-            // Creating the server socket
-            try {
-                return new ServerSocket(port);
-            } catch (IOException e) {
-                System.out.println("IOException in server!");
+    /// Starts the server on localhost:<port>
+    private static void startServer(int port) {
+        try {
+            serverSocket = new ServerSocket(port);
+            System.out.println("Info: Server started on localhost:" + port);
+        } catch (IOException e) {
+            System.out.println("Couldn't start server do to IOException: " + e.getMessage());
+        }
+    }
+
+    /// Endlessly accepts users. Runs on separate thread!
+    static class AcceptUsers implements Runnable {
+        @Override
+        public void run() {
+            while(true) {
+                try {
+                    Socket socket = serverSocket.accept();
+                    // Sending Welcome message and saving output stream for later broadcasting
+                    ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+                    ClientConnection connection = new ClientConnection(socket, objectOutputStream);
+                    synchronized (clientConnections) {
+                        clientConnections.add(connection);
+                    }
+
+                    // Sending welcome message to new user
+                    Message.sendMessage(objectOutputStream, SERVER_NAME, WELCOME_MESSAGE);
+                    // Broadcasting join message to other users
+                    broadcastMessage(SERVER_NAME, "A new user joined!", socket);
+
+                    // Only starting reader thread
+                    SocketReader reader = new SocketReader(socket, true);
+                    readerThreads.add(reader);
+                    reader.start();
+                } catch (IOException e) {
+                    System.out.println("Couldn't accept user do to an IOException: " + e.getMessage());
+                }
             }
         }
     }
+
+    record ClientConnection(Socket socket, ObjectOutputStream outputStream) { }
 }

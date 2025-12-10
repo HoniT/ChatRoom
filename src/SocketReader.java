@@ -1,46 +1,42 @@
-import java.io.ObjectOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
+import java.util.Objects;
 
 public class SocketReader extends Thread {
-    private final Socket socket;
-    private final ObjectInputStream input;
+    private ObjectInputStream inputStream;
+
     private final boolean isServer;
+    private final Socket sender;
 
-    private final ObjectOutputStream userOutput; // User output that sends data
-
-    public SocketReader(Socket socket) throws IOException {
-        this.socket = socket;
-        this.input = new ObjectInputStream(socket.getInputStream());
-        this.isServer = false;
-        this.userOutput = null;
+    public SocketReader(Socket socket) {
+        this(socket, false);
     }
 
-    public SocketReader(Socket socket, boolean isServer, ObjectOutputStream userOutput) throws IOException {
-        this.socket = socket;
-        this.input = new ObjectInputStream(socket.getInputStream());
+    public SocketReader(Socket socket, boolean isServer) {
+        try {
+            this.inputStream = new ObjectInputStream(socket.getInputStream());
+        } catch (IOException e) {
+            System.out.println("Couldn't start reading! IOException: " + e.getMessage());
+        }
         this.isServer = isServer;
-        this.userOutput = userOutput;
+        this.sender = socket;
     }
 
     @Override
     public void run() {
         while(true) {
             try {
-                if (isServer) {
-                    // Server side: parse the message and broadcast to all clients
-                    String message = input.readUTF();
-                    ChatRoom.broadcastMessage(new Message(message), userOutput);
-                } else {
-                    // Client side: just display the message
-                    Message.receiveMessage(input);
-                }
+                // Printing received message for clients
+                if(!isServer) System.out.println(Message.getUnifiedMessage(Objects.requireNonNull(Message.receiveData(inputStream))));
+                // If the server received a message, we'll broadcast it to every other user
+                else Message.broadcastMessage(inputStream, sender);
             } catch (IOException e) {
-                System.out.println("Connection lost!");
-                // Trying to reconnect
-                ChatUser.TryReconnect(socket);
-
+                if(!isServer) {
+                    System.out.println("Lost connection to serve do to " + e.getMessage());
+                    // Try to reconnect
+                }
+                else System.out.println("Client lost connection: " + e.getMessage());
                 break;
             }
         }

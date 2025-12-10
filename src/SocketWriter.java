@@ -1,17 +1,19 @@
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 
 public class SocketWriter extends Thread {
-    private final ObjectOutputStream output;
+    private ObjectOutputStream outputStream;
     private final Scanner scanner;
     private final String username;
 
-    public SocketWriter(Socket socket, String username, Scanner scanner) throws IOException {
-        this.output = new ObjectOutputStream(socket.getOutputStream());
+    public SocketWriter(Socket socket, Scanner scanner, String username) {
+        try {
+            this.outputStream = new ObjectOutputStream(socket.getOutputStream());
+        } catch (IOException e) {
+            System.out.println("Couldn't start writing! IOException: " + e.getMessage());
+        }
         this.scanner = scanner;
         this.username = username;
     }
@@ -19,8 +21,12 @@ public class SocketWriter extends Thread {
     @Override
     public void run() {
         while(true) {
-            String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
-            Message.sendMessage(output, new Message(username, time, scanner.nextLine()));
+            try {
+                Message.sendMessage(outputStream, username, scanner.nextLine());
+            } catch (IOException e) {
+                System.out.println("Connection lost in SocketWriter! IOException: " + e.getMessage());
+                break;
+            }
         }
     }
 }
