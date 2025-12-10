@@ -36,7 +36,7 @@ The ChatUser class represents each individual user. It:
    Each ChatUser instance connects to the running server.
 
 3. **Users start with anonymous names**  
-   Example: `Anonymous1234`
+   Example: `Anonymous User 123`
 
 4. **Users can set a custom name**  
    Using a command (see command table).
@@ -62,11 +62,11 @@ The ChatUser class represents each individual user. It:
 
 ## Commands
 
-| Command | Description | Example                 |
-|--------|-------------|-------------------------|
-| `/name <newName>` | Change your current username | `/name George`          |
+| Command                    | Description                               | Example                 |
+|----------------------------|-------------------------------------------|-------------------------|
+| `/name <newName>`          | Change your current username              | `/name George`          |
 | `/pm <username> <message>` | Send a private message to a specific user | `/pm Alex hello there!` |
-| `/users` | List all connected users | `/users`                |
-| `/help` | Show available commands | `/help`                 |
-| `/exit` | Disconnect from the chatroom | `/exit`                 |
+| `/help`                    | Show available commands                   | `/help`                 |
+| `/rejoin`                  | Reconnects to server                      | `/rejoin`               |
+| `/exit`                    | Disconnect from the chatroom              | `/exit`                 |
 
