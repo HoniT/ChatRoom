@@ -1,3 +1,9 @@
+package Server;
+
+import Message.Message;
+import Message.MessageData;
+import Message.JoinRequest;
+import Message.SocketReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -82,7 +88,8 @@ public class ChatRoom {
                 try {
                     Socket socket = serverSocket.accept();
                     // Saving username
-                    String username = Message.getUsername(Objects.requireNonNull(Message.receiveData(new ObjectInputStream(socket.getInputStream()))));
+                    MessageData data = Message.receiveData(new ObjectInputStream(socket.getInputStream()));
+                    String username = data instanceof JoinRequest ? ((JoinRequest) data).getUsername() : "unknown";
 
                     // Saving output stream for later broadcasting
                     ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());

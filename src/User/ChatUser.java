@@ -1,3 +1,8 @@
+package User;
+
+import Message.Message;
+import Message.SocketReader;
+import Message.SocketWriter;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;

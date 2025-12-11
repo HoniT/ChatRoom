@@ -16,8 +16,8 @@ The Chatroom class represents the central server. It:
 - Handles private message routing
 - Manages join/leave notifications
 
-### 2. ChatUser (Client)
-The ChatUser class represents each individual user. It:
+### 2. User.ChatUser (Client)
+The User.ChatUser class represents each individual user. It:
 
 - Connects to the Chatroom server
 - Sends messages or commands
@@ -33,7 +33,7 @@ The ChatUser class represents each individual user. It:
    Run the Chatroom class to open a listening socket.
 
 2. **Start any number of clients**  
-   Each ChatUser instance connects to the running server.
+   Each User.ChatUser instance connects to the running server.
 
 3. **Users start with anonymous names**  
    Example: `Anonymous User 123`
