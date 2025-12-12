@@ -1,4 +1,4 @@
-package Message;
+package Communication;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -26,18 +26,19 @@ public class SocketReader extends Thread {
 
     @Override
     public void run() {
-        while(true) {
+        while(!Thread.interrupted()) {
             try {
                 // Printing received message for clients
                 if(!isServer) {
                     MessageData data = Message.receiveData(inputStream);
                     if(data instanceof ChatMessage message) System.out.println(message.toUnifiedString());
+                    else if(data instanceof PrivateMessage message) System.out.println(message.toUnifiedString());
                 }
                 // If the server received a message, we'll broadcast it to every other user
                 else Message.broadcastMessage(inputStream, sender);
             } catch (IOException e) {
                 if(!isServer) {
-                    System.out.println("Lost connection to server do to " + e.getMessage());
+                    System.out.println("Lost connection to server: " + e.getMessage());
                     // Try to reconnect
                 }
                 else System.out.println("Client lost connection: " + e.getMessage());

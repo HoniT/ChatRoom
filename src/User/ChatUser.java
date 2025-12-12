@@ -1,8 +1,8 @@
 package User;
 
-import Message.Message;
-import Message.SocketReader;
-import Message.SocketWriter;
+import Communication.Message;
+import Communication.SocketReader;
+import Communication.SocketWriter;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -14,23 +14,74 @@ import java.util.regex.Pattern;
 /// Chatroom user
 public class ChatUser {
     private static String username = "";
+    private static SocketWriter socketWriter;
+    private static SocketReader socketReader;
+    private static Socket socket;
+
+    public static String getUsername() { return username; }
+
+    private static String ip;
+    private static int port;
 
     public static void main(String[] args) throws InterruptedException {
         // Random username
-        username = "Anonymous User " + new Random().nextInt(0, 1000);
+        username = "Anonymous_User_" + new Random().nextInt(0, 1000);
 
         // Connecting to server
-        Socket socket = connectToServer();
+        socket = connectToServer();
 
         // Starting I/O threads
-        SocketReader socketReader = new SocketReader(socket);
+        socketReader = new SocketReader(socket);
         socketReader.start();
-        SocketWriter socketWriter = new SocketWriter(socket, new Scanner(System.in), username);
+        socketWriter = new SocketWriter(socket, new Scanner(System.in), username);
         socketWriter.start();
 
         socketWriter.join();
         socketReader.join();
     }
+
+    //region Terminal Functions
+
+    public static void changeUsername(String newName) {
+        username = newName;
+        socketWriter.updateUsername(username);
+    }
+
+    public static void exitChatroom() {
+        // Closing connection and interrupting I/O threads
+        try {
+            socket.close();
+            socketReader.interrupt();
+            socketWriter.interrupt();
+        } catch (IOException e) {
+            System.out.println("IOException while exiting chatroom: " + e.getMessage());
+        }
+    }
+
+    public static void rejoinChatroom() {
+        // Stopping old threads
+        if(socketReader != null) socketReader.interrupt();
+        if(socketWriter != null) socketWriter.interrupt();
+
+        try {
+            if(socket != null) socket.close();
+            socket = new Socket(ip, port);
+            if(!socket.isConnected()) throw new IOException();
+            // Sending join info
+            Message.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
+
+            // Restart threads for I/O
+            socketReader = new SocketReader(socket);
+            socketReader.start();
+            socketWriter = new SocketWriter(socket, new Scanner(System.in), username);
+            socketWriter.start();
+
+        } catch (IOException e) {
+            System.out.println("Couldn't reconnect to server do to IOException: " + e.getMessage());
+        }
+    }
+
+    //endregion
 
     /// Endlessly waits for a valid IP to be provided via scanner
     private static String getServerIp(Scanner scanner) {
@@ -71,8 +122,8 @@ public class ChatUser {
         while(true) {
             Scanner scanner = new Scanner(System.in);
             // Getting IP and port
-            String ip = getServerIp(scanner);
-            int port = getServerPort(scanner);
+            ip = getServerIp(scanner);
+            port = getServerPort(scanner);
 
             // Trying to connect
             try {

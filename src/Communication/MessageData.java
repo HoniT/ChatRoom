@@ -1,4 +1,4 @@
-package Message;
+package Communication;
 
 import com.google.gson.JsonObject;
 

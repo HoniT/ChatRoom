@@ -1,9 +1,9 @@
 package Server;
 
-import Message.Message;
-import Message.MessageData;
-import Message.JoinRequest;
-import Message.SocketReader;
+import Communication.Message;
+import Communication.MessageData;
+import Communication.JoinRequest;
+import Communication.SocketReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,7 +13,7 @@ import java.util.*;
 
 /// Chatroom server
 public class ChatRoom {
-    private static final String SERVER_NAME = "SERVER MESSAGE";
+    private static final String SERVER_NAME = "SERVER_MESSAGE";
     private static final String WELCOME_MESSAGE = "Welcome to the chatroom ";
 
     private static ServerSocket serverSocket;
@@ -42,6 +42,27 @@ public class ChatRoom {
             try {
                 if(connection.socket == sender) continue;
                 Message.sendMessage(connection.outputStream, username, payload);
+            } catch (IOException e) {
+                // Mark for removal if client disconnected
+                disconnectedClients.add(connection);
+            }
+        }
+
+        // Remove disconnected clients
+        clientConnections.removeAll(disconnectedClients);
+    }
+
+    /// Sends message to only a given user
+    public static synchronized void privateMessage(String sourceUsername, String destUsername, String payload, Socket sender) {
+        System.out.println("PM: src: " + sourceUsername + " dest: " + destUsername + " payload: " + payload);
+
+        List<ClientConnection> disconnectedClients = new ArrayList<>();
+
+        for (ClientConnection connection : clientConnections) {
+            try {
+                if(connection.socket == sender || !Objects.equals(connection.username, destUsername)) continue;
+                System.out.println("Sending pm to " + connection.username);
+                Message.sendPrivateMessage(connection.outputStream, sourceUsername, destUsername, payload);
             } catch (IOException e) {
                 // Mark for removal if client disconnected
                 disconnectedClients.add(connection);
@@ -93,7 +114,7 @@ public class ChatRoom {
 
                     // Saving output stream for later broadcasting
                     ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-                    ClientConnection connection = new ClientConnection(socket, objectOutputStream);
+                    ClientConnection connection = new ClientConnection(username, socket, objectOutputStream);
                     synchronized (clientConnections) {
                         clientConnections.add(connection);
                     }
@@ -114,5 +135,16 @@ public class ChatRoom {
         }
     }
 
-    record ClientConnection(Socket socket, ObjectOutputStream outputStream) { }
+    /// Represents a single client connection
+    public static class ClientConnection {
+        private final String username;
+        private final Socket socket;
+        private final ObjectOutputStream outputStream;
+
+        public ClientConnection(String username, Socket socket, ObjectOutputStream outputStream) {
+            this.username = username;
+            this.socket = socket;
+            this.outputStream = outputStream;
+        }
+    }
 }

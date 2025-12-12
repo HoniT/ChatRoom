@@ -1,4 +1,4 @@
-package Message;
+package Communication;
 
 import Server.ChatRoom;
 import com.google.gson.Gson;
@@ -20,6 +20,7 @@ public class Message {
         Map<String, Function<JsonObject, MessageData>> handlers = new HashMap<>();
         handlers.put("message", ChatMessage::fromJson);
         handlers.put("joining", JoinRequest::fromJson);
+        handlers.put("private_message", PrivateMessage::fromJson);
         return handlers;
     }
 
@@ -62,7 +63,7 @@ public class Message {
         outputStream.flush();
     }
 
-    /// Send a general chat message
+    /// Sends a general chat message
     public static void sendMessage(ObjectOutputStream outputStream, String username, String payload) throws IOException {
         if (username == null || payload == null) return;
 
@@ -78,16 +79,28 @@ public class Message {
         sendPacket(outputStream, request);
     }
 
+    /// Sends a private message
+    public static void sendPrivateMessage(ObjectOutputStream outputStream, String username, String destUsername, String payload) throws IOException {
+        if (username == null || destUsername == null || payload == null) return;
+
+        PrivateMessage message = new PrivateMessage(username, destUsername, payload);
+        sendPacket(outputStream, message);
+    }
+
     /// Passes data to chatroom for broadcasting
     public static void broadcastMessage(ObjectInputStream inputStream, Socket sender) throws IOException {
         MessageData data = receiveData(inputStream);
 
-        if (!(data instanceof ChatMessage message)) {
-            System.out.println("Broadcast error: Invalid message type!");
+        if (data instanceof ChatMessage message) {
+            ChatRoom.broadcastMessage(message.getUsername(), message.getPayload(), sender);
+            return;
+        }
+        else if (data instanceof PrivateMessage message) {
+            ChatRoom.privateMessage(message.getSourceUsername(), message.getDestUsername(), message.getPayload(), sender);
             return;
         }
 
-        ChatRoom.broadcastMessage(message.getUsername(), message.getPayload(), sender);
+        System.out.println("Broadcast error: Invalid message type!");
     }
 
     //endregion

@@ -1,4 +1,6 @@
-package Message;
+package Communication;
+
+import User.CommandManager;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -8,7 +10,7 @@ import java.util.Scanner;
 public class SocketWriter extends Thread {
     private ObjectOutputStream outputStream;
     private final Scanner scanner;
-    private final String username;
+    private String username;
 
     public SocketWriter(Socket socket, Scanner scanner, String username) {
         try {
@@ -22,13 +24,23 @@ public class SocketWriter extends Thread {
 
     @Override
     public void run() {
-        while(true) {
+        while(!Thread.interrupted()) {
             try {
-                Message.sendMessage(outputStream, username, scanner.nextLine());
+                String input = scanner.nextLine();
+                // If user entered a command character
+                if(input.charAt(0) == '/') {
+                    CommandManager.executeCommand(outputStream, input);
+                    continue;
+                }
+                Message.sendMessage(outputStream, username, input);
             } catch (IOException e) {
-                System.out.println("Connection lost in Message.SocketWriter! IOException: " + e.getMessage());
+                System.out.println("Connection lost in SocketWriter! IOException: " + e.getMessage());
                 break;
             }
         }
+    }
+
+    public void updateUsername(String username) {
+        this.username = username;
     }
 }
