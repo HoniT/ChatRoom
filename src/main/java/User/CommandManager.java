@@ -58,6 +58,11 @@ public class CommandManager {
     }
 
     private static void privateMessage(List<String> params) {
+        if(params.size() < 2) {
+            System.out.println("Syntax: /pm <name> <message>");
+            return;
+        }
+
         // Getting params
         String destUsername = params.getFirst();
         String payload = "";
