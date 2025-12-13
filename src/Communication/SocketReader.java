@@ -35,11 +35,10 @@ public class SocketReader extends Thread {
                     else if(data instanceof PrivateMessage message) System.out.println(message.toUnifiedString());
                 }
                 // If the server received a message, we'll broadcast it to every other user
-                else Message.broadcastMessage(inputStream, sender);
+                else Message.manageServerData(inputStream, sender);
             } catch (IOException e) {
                 if(!isServer) {
                     System.out.println("Lost connection to server: " + e.getMessage());
-                    // Try to reconnect
                 }
                 else System.out.println("Client lost connection: " + e.getMessage());
                 break;

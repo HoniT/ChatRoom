@@ -1,6 +1,7 @@
 package User;
 
-import Communication.Message;
+import Communication.ChangeNameRequest;
+import Communication.PrivateMessage;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
@@ -47,6 +48,12 @@ public class CommandManager {
         }
 
         String newName = params.getFirst();
+        try {
+            // Sending request to change name records in server
+            ChangeNameRequest.sendNameChangeRequest(_output, ChatUser.getUsername(), newName);
+        } catch (IOException e) {
+            System.out.println("Couldn't change name do to IOException: " + e.getMessage());
+        }
         ChatUser.changeUsername(newName);
     }
 
@@ -59,7 +66,7 @@ public class CommandManager {
         }
 
         try {
-            Message.sendPrivateMessage(_output, ChatUser.getUsername(), destUsername, payload);
+            PrivateMessage.sendPrivateMessage(_output, ChatUser.getUsername(), destUsername, payload);
         } catch (IOException e) {
             System.out.println("Couldn't send private message do to IOException: " + e.getMessage());
         }

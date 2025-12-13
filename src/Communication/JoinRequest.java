@@ -2,8 +2,11 @@ package Communication;
 
 import com.google.gson.JsonObject;
 
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+
 public class JoinRequest implements MessageData {
-    private static final String TYPE = "joining";
+    static final String TYPE = "joining";
 
     private final String username;
 
@@ -32,5 +35,13 @@ public class JoinRequest implements MessageData {
 
     public String getUsername() {
         return username;
+    }
+
+    /// Sends join request to server through outputStream
+    public static void sendJoinRequest(ObjectOutputStream outputStream, String username) throws IOException {
+        if (username == null) return;
+
+        JoinRequest request = new JoinRequest(username);
+        Message.sendPacket(outputStream, request);
     }
 }

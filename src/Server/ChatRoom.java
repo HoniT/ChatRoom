@@ -1,9 +1,6 @@
 package Server;
 
-import Communication.Message;
-import Communication.MessageData;
-import Communication.JoinRequest;
-import Communication.SocketReader;
+import Communication.*;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -41,7 +38,7 @@ public class ChatRoom {
         for (ClientConnection connection : clientConnections) {
             try {
                 if(connection.socket == sender) continue;
-                Message.sendMessage(connection.outputStream, username, payload);
+                ChatMessage.sendMessage(connection.outputStream, username, payload);
             } catch (IOException e) {
                 // Mark for removal if client disconnected
                 disconnectedClients.add(connection);
@@ -54,15 +51,12 @@ public class ChatRoom {
 
     /// Sends message to only a given user
     public static synchronized void privateMessage(String sourceUsername, String destUsername, String payload, Socket sender) {
-        System.out.println("PM: src: " + sourceUsername + " dest: " + destUsername + " payload: " + payload);
-
         List<ClientConnection> disconnectedClients = new ArrayList<>();
 
         for (ClientConnection connection : clientConnections) {
             try {
                 if(connection.socket == sender || !Objects.equals(connection.username, destUsername)) continue;
-                System.out.println("Sending pm to " + connection.username);
-                Message.sendPrivateMessage(connection.outputStream, sourceUsername, destUsername, payload);
+                PrivateMessage.sendPrivateMessage(connection.outputStream, sourceUsername, destUsername, payload);
             } catch (IOException e) {
                 // Mark for removal if client disconnected
                 disconnectedClients.add(connection);
@@ -71,6 +65,15 @@ public class ChatRoom {
 
         // Remove disconnected clients
         clientConnections.removeAll(disconnectedClients);
+    }
+
+    /// Changes username field for this username
+    public static void changeName(String oldUsername, String newUsername) {
+        for (ClientConnection connection : clientConnections) {
+            if(Objects.equals(connection.username, oldUsername)) {
+                connection.username = newUsername;
+            }
+        }
     }
 
     /// Endlessly waits for a valid port to be provided via scanner
@@ -120,7 +123,7 @@ public class ChatRoom {
                     }
 
                     // Sending welcome message to new user
-                    Message.sendMessage(objectOutputStream, SERVER_NAME, WELCOME_MESSAGE + username);
+                    ChatMessage.sendMessage(objectOutputStream, SERVER_NAME, WELCOME_MESSAGE + username);
                     // Broadcasting join message to other users
                     broadcastMessage(SERVER_NAME, username + " just joined, say hi!", socket);
 
@@ -136,8 +139,8 @@ public class ChatRoom {
     }
 
     /// Represents a single client connection
-    public static class ClientConnection {
-        private final String username;
+    static class ClientConnection {
+        private String username;
         private final Socket socket;
         private final ObjectOutputStream outputStream;
 

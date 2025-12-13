@@ -1,6 +1,6 @@
 package User;
 
-import Communication.Message;
+import Communication.JoinRequest;
 import Communication.SocketReader;
 import Communication.SocketWriter;
 import java.io.IOException;
@@ -68,7 +68,7 @@ public class ChatUser {
             socket = new Socket(ip, port);
             if(!socket.isConnected()) throw new IOException();
             // Sending join info
-            Message.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
+            JoinRequest.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
 
             // Restart threads for I/O
             socketReader = new SocketReader(socket);
@@ -130,7 +130,7 @@ public class ChatUser {
                 Socket socket = new Socket(ip, port);
                 if(!socket.isConnected()) throw new IOException();
                 // Sending join info
-                Message.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
+                JoinRequest.sendJoinRequest(new ObjectOutputStream(socket.getOutputStream()), username);
 
                 return socket;
             } catch (IOException e) {

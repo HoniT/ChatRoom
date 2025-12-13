@@ -1,13 +1,14 @@
 package Communication;
 
 import com.google.gson.JsonObject;
-
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 public class PrivateMessage implements MessageData {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String TYPE = "private_message";
+    static final String TYPE = "private_message";
 
     private final String sourceUsername;
     private final String destUsername;
@@ -68,5 +69,13 @@ public class PrivateMessage implements MessageData {
 
     public String toUnifiedString() {
         return sourceUsername + " " + time + " PRIVATE_CHAT> " + payload;
+    }
+
+    /// Sends a private message
+    public static void sendPrivateMessage(ObjectOutputStream outputStream, String username, String destUsername, String payload) throws IOException {
+        if (username == null || destUsername == null || payload == null) return;
+
+        PrivateMessage message = new PrivateMessage(username, destUsername, payload);
+        Message.sendPacket(outputStream, message);
     }
 }

@@ -1,7 +1,6 @@
 package Communication;
 
 import User.CommandManager;
-
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -32,7 +31,7 @@ public class SocketWriter extends Thread {
                     CommandManager.executeCommand(outputStream, input);
                     continue;
                 }
-                Message.sendMessage(outputStream, username, input);
+                ChatMessage.sendMessage(outputStream, username, input);
             } catch (IOException e) {
                 System.out.println("Connection lost in SocketWriter! IOException: " + e.getMessage());
                 break;

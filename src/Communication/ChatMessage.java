@@ -1,12 +1,14 @@
 package Communication;
 
 import com.google.gson.JsonObject;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 public class ChatMessage implements MessageData {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String TYPE = "message";
+    static final String TYPE = "message";
 
     private final String username;
     private final String time;
@@ -58,5 +60,13 @@ public class ChatMessage implements MessageData {
 
     public String toUnifiedString() {
         return username + " " + time + "> " + payload;
+    }
+
+    /// Sends a general chat message
+    public static void sendMessage(ObjectOutputStream outputStream, String username, String payload) throws IOException {
+        if (username == null || payload == null) return;
+
+        ChatMessage message = new ChatMessage(username, payload);
+        Message.sendPacket(outputStream, message);
     }
 }

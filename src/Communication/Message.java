@@ -18,9 +18,10 @@ public class Message {
 
     private static Map<String, Function<JsonObject, MessageData>> createDataHandlers() {
         Map<String, Function<JsonObject, MessageData>> handlers = new HashMap<>();
-        handlers.put("message", ChatMessage::fromJson);
-        handlers.put("joining", JoinRequest::fromJson);
-        handlers.put("private_message", PrivateMessage::fromJson);
+        handlers.put(ChatMessage.TYPE, ChatMessage::fromJson);
+        handlers.put(JoinRequest.TYPE, JoinRequest::fromJson);
+        handlers.put(PrivateMessage.TYPE, PrivateMessage::fromJson);
+        handlers.put(ChangeNameRequest.TYPE, ChangeNameRequest::fromJson);
         return handlers;
     }
 
@@ -51,7 +52,7 @@ public class Message {
     //region Send/Write
 
     /// Generic packet sender
-    public static void sendPacket(ObjectOutputStream outputStream, MessageData messageData) throws IOException {
+    static void sendPacket(ObjectOutputStream outputStream, MessageData messageData) throws IOException {
         if (messageData == null) return;
 
         Packet packet = new Packet();
@@ -63,32 +64,8 @@ public class Message {
         outputStream.flush();
     }
 
-    /// Sends a general chat message
-    public static void sendMessage(ObjectOutputStream outputStream, String username, String payload) throws IOException {
-        if (username == null || payload == null) return;
-
-        ChatMessage message = new ChatMessage(username, payload);
-        sendPacket(outputStream, message);
-    }
-
-    /// Sends join request to server through outputStream
-    public static void sendJoinRequest(ObjectOutputStream outputStream, String username) throws IOException {
-        if (username == null) return;
-
-        JoinRequest request = new JoinRequest(username);
-        sendPacket(outputStream, request);
-    }
-
-    /// Sends a private message
-    public static void sendPrivateMessage(ObjectOutputStream outputStream, String username, String destUsername, String payload) throws IOException {
-        if (username == null || destUsername == null || payload == null) return;
-
-        PrivateMessage message = new PrivateMessage(username, destUsername, payload);
-        sendPacket(outputStream, message);
-    }
-
-    /// Passes data to chatroom for broadcasting
-    public static void broadcastMessage(ObjectInputStream inputStream, Socket sender) throws IOException {
+    /// Passes data to chatroom for broadcasting/management
+    public static void manageServerData(ObjectInputStream inputStream, Socket sender) throws IOException {
         MessageData data = receiveData(inputStream);
 
         if (data instanceof ChatMessage message) {
@@ -97,6 +74,10 @@ public class Message {
         }
         else if (data instanceof PrivateMessage message) {
             ChatRoom.privateMessage(message.getSourceUsername(), message.getDestUsername(), message.getPayload(), sender);
+            return;
+        }
+        else if (data instanceof ChangeNameRequest(String oldUsername, String newUsername)) {
+            ChatRoom.changeName(oldUsername, newUsername);
             return;
         }
 
